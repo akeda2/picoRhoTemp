@@ -14,18 +14,23 @@ led.low()
 relay.low()
 degree = chr(176)
 
+# Temperature threshold:
+TT = 8
+# RH threshold:
+RT = 40
+
 while True:
     T, H = dht22.read()
-    now = time.localtime()
     
     if T is None:
-        print("T=----\xdfC H=----}%")
+        print("T=----", degree, "C H=----}%")
     else:
-        if T >= 8:
+        if T >= TT:
             led.high()
-            if H >= 40:
+            print("Temp >", TT )
+            if H >= RT:
                 relay.high()
-            print("Temp > 8, relay ON!")
+                print("RH >", RT, ", Relay ON!")
         else:
             led.low()
             relay.low()
