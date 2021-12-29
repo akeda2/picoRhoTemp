@@ -1,9 +1,8 @@
 from machine import Pin
-#import DHT22.py
 from DHT22 import DHT22
 import time
 
-# DHT22 libray is available at
+# DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
 # init DHT22 on Pin 15
@@ -14,6 +13,8 @@ led.low()
 relay.low()
 degree = chr(176)
 
+# Time to sleep in main loop
+sleeptime = 6000
 # Temperature threshold:
 TT = 8
 # RH threshold:
@@ -37,5 +38,5 @@ while True:
             print("Deactivated...")
         print(T,H)
         print("T={:3.1f}{}C H={:3.1f}%".format(T,degree,H))
-    time.sleep_ms(500)
+    time.sleep_ms(sleeptime)
 
