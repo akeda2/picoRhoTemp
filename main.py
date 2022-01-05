@@ -5,7 +5,7 @@ import time
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
-# init DHT22 on Pin 15
+# init DHT22 on Pin 4
 dht22 = DHT22(Pin(4,Pin.IN,Pin.PULL_UP))
 led = Pin(25, Pin.OUT)
 relay = Pin(15, Pin.OUT)
@@ -19,28 +19,30 @@ sleeptime = 6000
 # Temperature threshold:
 TT = 8
 # RH threshold:
-RT = 20
+RT = 40
 
 while True:
-    T, H = dht22.read()
-    notfull = flott.high() == False
+    T, RH = dht22.read()
+    #notfull = flott.high() == False
     if flott.value() == True:
         relay.low()
         print("Container full!")
     elif T is None:
-        print("T=----", degree, "C H=----}%")
+        print("T=----", degree, "C RH=----}%")
     else:
         if T >= TT and flott.value() != True:
             led.high()
-            print("Temp >", TT )
-            if H >= RT:
+            print("Temp:", T, "> TT:", TT )
+            if RH >= RT:
                 relay.high()
-                print("RH >", RT, ", Relay ON!")
+                print("RH:", RH, ">", RT, ", Relay ON")
+            else:
+                print("RH:", RH, "<", RT, ", Relay OFF")
         else:
             led.low()
             relay.low()
-            print("Deactivated...")
-        print(T,H)
-        print("T={:3.1f}{}C H={:3.1f}%".format(T,degree,H))
+            print(T, RH, "Relay OFF")
+        #print(T,RH)
+        print("T={:3.1f}{}C RH={:3.1f}%".format(T,degree,RH))
     time.sleep_ms(sleeptime)
 
