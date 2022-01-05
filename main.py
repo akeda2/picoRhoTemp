@@ -9,6 +9,7 @@ import time
 dht22 = DHT22(Pin(4,Pin.IN,Pin.PULL_UP))
 led = Pin(25, Pin.OUT)
 relay = Pin(15, Pin.OUT)
+flott = Pin(16, Pin.IN,Pin.PULL_DOWN)
 led.low()
 relay.low()
 degree = chr(176)
@@ -18,15 +19,18 @@ sleeptime = 6000
 # Temperature threshold:
 TT = 8
 # RH threshold:
-RT = 40
+RT = 20
 
 while True:
     T, H = dht22.read()
-    
-    if T is None:
+    notfull = flott.high() == False
+    if flott.value() == True:
+        relay.low()
+        print("Container full!")
+    elif T is None:
         print("T=----", degree, "C H=----}%")
     else:
-        if T >= TT:
+        if T >= TT and flott.value() != True:
             led.high()
             print("Temp >", TT )
             if H >= RT:
