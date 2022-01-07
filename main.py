@@ -4,7 +4,7 @@ import time
 import sys
 import _thread
 from _thread import start_new_thread
-
+import utime
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
@@ -25,21 +25,41 @@ TT = 8
 # RH threshold:
 RT = 40
 
+LATCH = 2
+
 def readser():
+    global LATCH
     while True:
         arawdata = sys.stdin.readline()
+        print(arawdata)
+        rawdata = int(arawdata)
         if board == "tiny":
-            blue.duty_u16(0)
-            green.duty_u16(65535)
+            #blue.duty_u16(0)
+            #green.duty_u16(65535)
+            print("lkj")
         else:
-            led.duty_u16(65535)
-
-def round_to(n, precision):
-    correction = 0.5 if n >= 0 else -0.5
-    return int( n/precision+correction ) * precision
-#readserialThread = _thread.start_new_thread(readser, ())
+            led.high()
+            #led.duty_u16(65535)
+        try:
+            if rawdata > 299000:
+                print("Latch on auto!")
+                LATCH = 2
+            elif rawdata > 199000:
+                print("Latch on signal!")
+                relay.high()
+                LATCH = 1
+            elif rawdata > 99000:
+                print("Latch off signal!")
+                LATCH = 0
+                relay.low()
+        except:
+            pass
+            
+readserialThread = _thread.start_new_thread(readser, ())
 
 while True:
+    led.high()
+    LATCH
     T, RH = dht22.read()
     #notfull = flott.high() == False
     if flott.value() == True:
@@ -51,11 +71,13 @@ while True:
         if T >= TT and flott.value() != True:
             led.high()
             print("Temp:", T, "> TT:", TT )
-            if RH >= RT:
+            if RH >= RT and LATCH >= 1:
                 relay.high()
                 print("RH:", RH, ">", RT, ", Relay ON")
+            elif LATCH == 0:
+                print("LATCH OFF")
             else:
-                print("RH:", RH, "<", RT, ", Relay OFF")
+                print("RH:", RH, "<", RT)
         else:
             led.low()
             relay.low()
