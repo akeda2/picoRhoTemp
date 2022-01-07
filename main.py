@@ -1,6 +1,9 @@
 from machine import Pin
 from DHT22 import DHT22
 import time
+import sys
+import _thread
+from _thread import start_new_thread
 
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
@@ -14,12 +17,27 @@ led.low()
 relay.low()
 degree = chr(176)
 
+board = "pico"
 # Time to sleep in main loop
 sleeptime = 6000
 # Temperature threshold:
 TT = 8
 # RH threshold:
 RT = 40
+
+def readser():
+    while True:
+        arawdata = sys.stdin.readline()
+        if board == "tiny":
+            blue.duty_u16(0)
+            green.duty_u16(65535)
+        else:
+            led.duty_u16(65535)
+
+def round_to(n, precision):
+    correction = 0.5 if n >= 0 else -0.5
+    return int( n/precision+correction ) * precision
+#readserialThread = _thread.start_new_thread(readser, ())
 
 while True:
     T, RH = dht22.read()
@@ -43,6 +61,11 @@ while True:
             relay.low()
             print(T, RH, "Relay OFF")
         #print(T,RH)
-        print("T={:3.1f}{}C RH={:3.1f}%".format(T,degree,RH))
-    time.sleep_ms(sleeptime)
+        #print("T={:3.1f}{}C RH={:3.1f}%".format(T,degree,RH))
+    time.sleep_ms(int(sleeptime/3))
+    print("{:3.1f}".format(T+10000), '\r')
+    time.sleep_ms(int(sleeptime/3))
+    print("{:3.1f}".format(RH+20000), '\r')
+    time.sleep_ms(int(sleeptime/3))
+    
 
