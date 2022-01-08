@@ -5,6 +5,9 @@ import sys
 import _thread
 from _thread import start_new_thread
 import utime
+import gc
+
+gc.enable()
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
@@ -54,11 +57,12 @@ def readser():
                 relay.low()
         except:
             pass
+        gc.collect()
             
 readserialThread = _thread.start_new_thread(readser, ())
 
 while True:
-    led.high()
+    led.low()
     LATCH
     T, RH = dht22.read()
     #notfull = flott.high() == False
@@ -85,9 +89,15 @@ while True:
         #print(T,RH)
         #print("T={:3.1f}{}C RH={:3.1f}%".format(T,degree,RH))
     time.sleep_ms(int(sleeptime/3))
+    led.high()
     print("{:3.1f}".format(T+10000), '\r')
+    led.low()
     time.sleep_ms(int(sleeptime/3))
+    led.high()
     print("{:3.1f}".format(RH+20000), '\r')
+    led.low()
     time.sleep_ms(int(sleeptime/3))
+    led.high()
+    gc.collect()
     
 
