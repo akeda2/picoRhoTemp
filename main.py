@@ -6,6 +6,8 @@ import _thread
 from _thread import start_new_thread
 import utime
 import gc
+import collections
+#import queue
 
 gc.enable()
 # DHT22 library is available at
@@ -34,8 +36,11 @@ def readser():
     global LATCH
     while True:
         arawdata = sys.stdin.readline()
-        print(arawdata)
-        rawdata = int(arawdata)
+        #print(arawdata)
+        try:
+            rawdata = int(arawdata)
+        except:
+            pass
         if board == "tiny":
             #blue.duty_u16(0)
             #green.duty_u16(65535)
@@ -61,43 +66,72 @@ def readser():
             
 readserialThread = _thread.start_new_thread(readser, ())
 
+mT = []
+mRH = []
+llen = 20
 while True:
     led.low()
-    LATCH
+    #LATCH
     T, RH = dht22.read()
+    
+    if len(mT) < llen:
+        mT.append(T)
+    else:
+        mT.pop(0)
+        mT.append(T)
+    if len(mRH) < llen:
+        mRH.append(RH)
+    else:
+        mRH.pop(0)
+        mRH.append(RH)
+    
+    sT = sum(mT)/len(mT)
+    sRH = sum(mRH)/len(mRH)
+    print(str(len(mRH)))
+    print(mT, mRH)
+    #print("AVG::: {:3.1f} {:3.1f}".format(sT,sRH))
+    
     #notfull = flott.high() == False
     if flott.value() == True:
         relay.low()
         print("Container full!")
+        ran = range(6)
+        for r in ran:
+            print("{}".format(999999), '\r')
+            utime.sleep(1)
+            print("{}".format(999999), '\r')
+            utime.sleep(1)
+        #utime.sleep(2)
     elif T is None:
         print("T=----", degree, "C RH=----}%")
     else:
-        if T >= TT and flott.value() != True:
+        if sT >= TT and flott.value() != True:
             led.high()
-            print("Temp:", T, "> TT:", TT )
-            if RH >= RT and LATCH >= 1:
+            print("Temp:", sT, "> TT:", TT )
+            if sRH >= RT and LATCH >= 1:
                 relay.high()
-                print("RH:", RH, ">", RT, ", Relay ON")
+                print("RH:", sRH, ">", RT, ", Relay ON")
             elif LATCH == 0:
                 print("LATCH OFF")
             else:
-                print("RH:", RH, "<", RT)
+                print("RH:", sRH, "<", RT)
         else:
             led.low()
             relay.low()
-            print(T, RH, "Relay OFF")
+            print(sT, sRH, "Relay OFF")
         #print(T,RH)
         #print("T={:3.1f}{}C RH={:3.1f}%".format(T,degree,RH))
     time.sleep_ms(int(sleeptime/3))
     led.high()
-    print("{:3.1f}".format(T+10000), '\r')
+    print("{:3.1f}".format(sT+10000), '\r')
     led.low()
     time.sleep_ms(int(sleeptime/3))
     led.high()
-    print("{:3.1f}".format(RH+20000), '\r')
+    print("{:3.1f}".format(sRH+20000), '\r')
     led.low()
     time.sleep_ms(int(sleeptime/3))
     led.high()
+    sT = sRH = T = RH = None
     gc.collect()
     
 
