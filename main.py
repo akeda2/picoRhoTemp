@@ -13,21 +13,24 @@ gc.enable()
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
-# init DHT22 on Pin 4
+# init DHT22 on Pin 4. Do not forget to connect 3.3V and GND with a 10k pull-up resistor between 3.3V and data (4).
 dht22 = DHT22(Pin(4,Pin.IN,Pin.PULL_UP))
+# The LED is the pico built-in.
 led = Pin(25, Pin.OUT)
+# Relay on 15. For a 5V relay, connect 5V and GND.
 relay = Pin(15, Pin.OUT)
+# For a "flottör" (float switch), connect it to 16 and 3.3V (NOT 5V!).
 flott = Pin(16, Pin.IN,Pin.PULL_DOWN)
 led.low()
 relay.low()
 degree = chr(176)
 
 board = "pico"
-# Time to sleep in main loop
+# Time to sleep in main loop. DHT22 needs a few seconds between readouts.
 sleeptime = 6000
-# Temperature threshold:
+# Temperature threshold: (at what temperature should the dehumidifier turn off due to low temperature?)
 TT = 8
-# RH threshold:
+# RH threshold: (when should dehumidifier turn ON/OFF?)
 RT = 40
 
 LATCH = 2
@@ -68,6 +71,7 @@ readserialThread = _thread.start_new_thread(readser, ())
 
 mT = []
 mRH = []
+# llen: How long should the list to calculate a mean be?
 llen = 20
 while True:
     led.low()
