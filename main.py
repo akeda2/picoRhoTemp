@@ -29,9 +29,9 @@ board = "pico"
 # Time to sleep in main loop. DHT22 needs a few seconds between readouts.
 sleeptime = 6000
 # Temperature threshold: (at what temperature should the dehumidifier turn off due to low temperature?)
-TT = 8
+TT = 10
 # RH threshold: (when should dehumidifier turn ON/OFF?)
-RT = 40
+RT = 50
 
 LATCH = 2
 
