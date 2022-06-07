@@ -74,6 +74,9 @@ mT = []
 mRH = []
 # llen: How long should the list to calculate a mean be?
 llen = 40
+countdown = 0
+recountdown = 0
+cd = 10
 
 foo, bar = dht22.read()
 print("Init dht22", foo, bar, "and waiting...")
@@ -108,36 +111,38 @@ while True:
     #print(str(len(mRH)))
     #print(mT, mRH)
     
-    firstRH = (mRH[3] + mRH[4]) / 2
-    lastRH = (mRH[-10] + mRH[-12]) / 2
-    firstT = (mT[3] + mT[4]) / 2
-    lastT = (mT[-10] + mT[-12]) / 2
+    firstRH = (mRH[0] + mRH[1]) /2 #+ mRH[5]) / 3
+    lastRH = (mRH[-10] + mRH[-11]) /2 # + mRH[-12]) / 3
+    firstT = (mT[0] + mT[1]) /2 # + mT [5]) / 3
+    lastT = (mT[-10] + mT[-11]) /2 # + mT[-12]) / 3
     
-    RHdiff = lastRH - firstRH
-    Tdiff = lastT - firstT
+    RHdiff = round((lastRH - firstRH), 5)
+    Tdiff = round((lastT - firstT), 5)
     
-    futureRH = lastRH
-    futureT = lastT
-    for f in range(10):
-        futureRH += RHdiff
-        futureT += Tdiff
+    # Future: (40-10 = 30)*2 = 60 iterations from current
+    
+    futureRH = round((lastRH + (RHdiff * 2)), 3)
+    futureT = round((lastT + (Tdiff * 2)), 3)
+    #for f in range((llen - 10)):
+    #    futureRH += RHdiff
+    #    futureT += Tdiff
+    futureRHdiff = round((futureRH - mRH[-1]), 3)
+    futureTdiff = round((futureT - mT[-1]), 3)
     print("------------------------------------------------------------------------")
     print("RHdiff =", RHdiff, "Tdiff =", Tdiff)
-    print("firstRH =", firstRH, "lastRH =", lastRH, "futureRH =", futureRH)
-    print("firstT =", firstT, "lastT =", lastT, "futureT =", futureT)
-    
-    #print("futureRH =", futureRH)
-    #print("futureT =", futureT)
-    #procent = lastRH / firstRH
+    print("firstRH [0] =", firstRH, ", lastRH [",(llen-10),"] =", lastRH, ", RH [now] =", RH, ", futureRH [",((llen-10)*2),"] =", futureRH)
+    print(" firstT [0] =", firstT,  ",  lastT [",(llen-10),"] =",  lastT, ",  T [now] =", T,  ",  futureT [",((llen-10)*2),"] =", futureT)
+    #print("Latest reading: RH =", RH, "T =", T)
+    print("futureRHdiff =", futureRHdiff, "futureTdiff =", futureTdiff)
     
     #print("Tdiff:", Tdiff, " RHdiff:", RHdiff)
-    if RHdiff >= 0:
+    if RHdiff >= 0.1:
         print("RHdiff:", RHdiff, "RH UP")
         RHup = True
     else:
         print("RHdiff:", RHdiff, "RH DOWN")
         RHup = False
-    if Tdiff <= 0:
+    if Tdiff <= -0.1:
         print("Tdiff:", Tdiff, "T DOWN")
         Tup = False
     else:
@@ -164,35 +169,56 @@ while True:
         if sT >= TT: #and flott.value() != True:
             led.high()
             print("Temp:", sT, "> TT:", TT )
-            print(LATCH)
             if LATCH == 1:
                 relay.high()
                 print("LATCH =", LATCH, "Relay ON")
-            elif LATCH >= 1:
-                if sRH > RT and RHup:
+            elif LATCH > 1:
+                print("LATCH =", LATCH)
+                if recountdown > 0:
+                    relay.low()
+                    print("Staying OFF, recountdown =", recountdown)
+                    recountdown -= 1
+                    
+                elif sRH > RT and RHup:
                     relay.high()
-                    print("RHup =", RHup, ", Relay ON")
+                    print("sRH >", RT, "RHup =", RHup, ", Relay ON")
+                    countdown = cd
                 elif sRH > (RT-4) and RHdiff > 0.4:
                     relay.high()
                     print("RHdiff:", RHdiff, "> 0.4", "Relay ON")
+                    countdown = cd
                 elif sRH > (RT-2) and RHup and not Tup:
                     relay.high()
-                    print("RH up, Temp down, Relay ON")
+                    print("sRH >", (RT-2), "RH up, Temp down, Relay ON")
+                    countdown = cd
                 elif sRH > (RT+2) and not Tup:
                     relay.high()
                     print("RH >", (RT+2), "Temp DOWN", Tup, "Relay ON")
+                    countdown = cd
                 elif sRH > (RT+10):
                     relay.high()
                     print("RH >", (RT+10), "Relay ON")
+                    countdown = cd
                 elif futureRH > RT:
                     relay.high()
                     print("futureRH >", RT, "Relay ON")
+                    countdown = cd
+                elif (futureT - lastT) < -2:
+                    relay.high()
+                    print("futureT - lastT < -2, Relay ON")
+                    countdown = cd
                 else:
-                    print("No latch >1 errorlevels true, Relay OFF")
-                    relay.low()
+                    print("No latch >1 errorlevels true")
+                    if countdown <= 0:
+                        relay.low()
+                        print("Countdown done, Relay OFF")
+                        recountdown = cd
+                    else:
+                        print("Staying ON, countdown =", countdown)
+                        countdown -= 1
 
             elif LATCH == 0:
-                print("LATCH OFF")
+                print("LATCH =", LATCH)
                 relay.low()
             else:
                 print("RH:", sRH, "<", RT, ", Relay OFF")
