@@ -73,7 +73,7 @@ readserialThread = _thread.start_new_thread(readser, ())
 mT = []
 mRH = []
 # llen: How long should the list to calculate a mean be?
-llen = 40
+llen = 100
 countdown = 0
 recountdown = 0
 cd = 10
@@ -108,13 +108,33 @@ while True:
     
     sT = sum(mT)/len(mT)
     sRH = sum(mRH)/len(mRH)
-    #print(str(len(mRH)))
-    #print(mT, mRH)
     
-    firstRH = (mRH[0] + mRH[1]) /2 #+ mRH[5]) / 3
-    lastRH = (mRH[-10] + mRH[-11]) /2 # + mRH[-12]) / 3
-    firstT = (mT[0] + mT[1]) /2 # + mT [5]) / 3
-    lastT = (mT[-10] + mT[-11]) /2 # + mT[-12]) / 3
+    #print(str(len(mRH)))
+    #print(mT)
+    #print(mRH)
+    
+    firstRH = mRH[0]
+    lastRH = mRH[-10]
+    firstT = mT[0]
+    lastT = mT[-10]
+    
+    for r in range(1, 5):
+        #print(r)
+        firstRH += mRH[r]
+        firstT += mT[r]
+    for q in range(-9, -5):
+        #print(q)
+        lastRH += mRH[q]
+        lastT += mT[q]
+    
+    firstRH /= 5
+    lastRH /= 5
+    firstT /= 5
+    lastT /= 5
+    #firstRH = (mRH[0] + mRH[1]) /2 #+ mRH[5]) / 3
+    #lastRH = (mRH[-10] + mRH[-11]) /2 # + mRH[-12]) / 3
+    #firstT = (mT[0] + mT[1]) /2 # + mT [5]) / 3
+    #lastT = (mT[-10] + mT[-11]) /2 # + mT[-12]) / 3
     
     RHdiff = round((lastRH - firstRH), 5)
     Tdiff = round((lastT - firstT), 5)
@@ -132,7 +152,7 @@ while True:
     print("RHdiff =", RHdiff, "Tdiff =", Tdiff)
     print("firstRH [0] =", firstRH, ", lastRH [",(llen-10),"] =", lastRH, ", RH [now] =", RH, ", futureRH [",((llen-10)*2),"] =", futureRH)
     print(" firstT [0] =", firstT,  ",  lastT [",(llen-10),"] =",  lastT, ",  T [now] =", T,  ",  futureT [",((llen-10)*2),"] =", futureT)
-    #print("Latest reading: RH =", RH, "T =", T)
+    print("Latest mean: sRH =", sRH, "sT =", sT)
     print("futureRHdiff =", futureRHdiff, "futureTdiff =", futureTdiff)
     
     #print("Tdiff:", Tdiff, " RHdiff:", RHdiff)
@@ -181,7 +201,7 @@ while True:
                     
                 elif sRH > RT and RHup:
                     relay.high()
-                    print("sRH >", RT, "RHup =", RHup, ", Relay ON")
+                    print("sRH:", sRH, ">", RT, "RHup =", RHup, ", Relay ON")
                     countdown = cd
                 elif sRH > (RT-4) and RHdiff > 0.4:
                     relay.high()
