@@ -122,7 +122,7 @@ while True:
         #print(r)
         firstRH += mRH[r]
         firstT += mT[r]
-    for q in range(-9, -5):
+    for q in range(-5, -1):
         #print(q)
         lastRH += mRH[q]
         lastT += mT[q]
@@ -150,8 +150,8 @@ while True:
     futureTdiff = round((futureT - mT[-1]), 3)
     print("------------------------------------------------------------------------")
     print("RHdiff =", RHdiff, "Tdiff =", Tdiff)
-    print("firstRH [0] =", firstRH, ", lastRH [",(llen-10),"] =", lastRH, ", RH [now] =", RH, ", futureRH [",((llen-10)*2),"] =", futureRH)
-    print(" firstT [0] =", firstT,  ",  lastT [",(llen-10),"] =",  lastT, ",  T [now] =", T,  ",  futureT [",((llen-10)*2),"] =", futureT)
+    print("firstRH [0] =", firstRH, ", lastRH [",(llen),"] =", lastRH, ", RH [now",llen,"] =", RH, ", futureRH [",((llen)*2),"] =", futureRH)
+    print(" firstT [0] =", firstT,  ",  lastT [",(llen),"] =",  lastT, ",  T [now",llen,"] =", T,  ",  futureT [",((llen)*2),"] =", futureT)
     print("Latest mean: sRH =", sRH, "sT =", sT)
     print("futureRHdiff =", futureRHdiff, "futureTdiff =", futureTdiff)
     
