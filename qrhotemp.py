@@ -27,8 +27,8 @@ dht22 = DHT22(Pin(4,Pin.IN,Pin.PULL_UP))
 #led = Pin(25, Pin.OUT)
 led = Pin('LED', Pin.OUT)
 # Relay on 15. For a 5V relay, connect 5V and GND to relay.
-relay1 = Pin(15, Pin.OUT)
-relay = Pin(16, Pin.OUT)
+relay = Pin(15, Pin.OUT)
+#relay = Pin(16, Pin.OUT)
 # For a "flottör" (float switch), connect it to 16 and 3.3V (NOT 5V!).
 flott = Pin(16, Pin.IN,Pin.PULL_DOWN)
 led.low()
@@ -144,6 +144,7 @@ async def serve_client(reader,writer):
         global TIMERON
         global woverride
         global clients
+        global LATCH
         print("Client connected")
         print("Clients before:", str(clients))
         request_line = await reader.readline()
@@ -209,7 +210,7 @@ async def serve_client(reader,writer):
         
         #Default webpage if just "/"
         myIP = myWifi.getip()
-        if relay1.value() == 1:
+        if relay.value() == 1:
             isiton = "ON"
         else:
             isiton = "OFF"
@@ -228,7 +229,7 @@ async def serve_client(reader,writer):
         <a href='http://{myIP}{urls['relayON']}'>Relay ON</a><br>
         <a href='http://{myIP}{urls['relayOFF']}'>Relay OFF</a><br>
         <a href='http://{myIP}{urls['relayStatus']}'>Relay status</a><br>
-        <a href='http://{myIP}{urls['overrideOFF']}'>Override OFF</a><br>
+        <a href='http://{myIP}{urls['overrideOFF']}'>Relay auto</a><br>
         <pre>\n\nServer IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\n</pre>"""#   = " + str(RH) + "<br>Temp = " + str(T) + "</h1>"
         redirDebug = f"Server IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\n"
         stateis = html % stateis
@@ -254,21 +255,21 @@ async def serve_client(reader,writer):
 #         if ozonON == 6:
 #             print("Ozon turning on")
 #             stateis = redir % (f"Ozon has turned on\n{request}", redirDebug)
-#             #relay1.high()
+#             #relay.high()
 #             ON = 1
 #             woverride = True
 #             valid = True
 #         if ozonOFF == 6:
 #             print("Ozon turning off")
 #             stateis = redir % (f"Ozon has turned off\n{request}", redirDebug)
-#             #relay1.low()
+#             #relay.low()
 #             ON = 0
 #             woverride = True
 #             valid = True
 #         if ozonToggle == 6:
 #             print("Ozon toggling...")
 #             stateis = redir % (f"Ozon has toggled\n{request}", redirDebug)
-#             relay1.toggle()
+#             relay.toggle()
 #             woverride = True
 #             valid = True
 #         if timerON == 6:
@@ -291,26 +292,29 @@ async def serve_client(reader,writer):
         if relayON == 6:
             print("Relay turning on")
             stateis = redir % (f"Relay has turned on\n{request}", redirDebug)
-            #relay1.high()
-            ON = 1
+            #relay.high()
+            #ON = 1
+            LATCH = 1
             woverride = True
             valid = True
         if relayOFF == 6:
             print("Relay turning off")
             stateis = redir % (f"Relay has turned off\n{request}", redirDebug)
-            #relay1.low()
-            ON = 0
+            #relay.low()
+            #ON = 0
+            LATCH = 0
             woverride = True
             valid = True
         if relayStatus == 6:
             print("Relay status")
-            stateis = (f"{str(relay1.value())}")
+            stateis = (f"{str(relay.value())}")
             valid = True
         if overrideOFF == 6:
             print("Override OFF")
             stateis = redir % (f"Override is OFF\n{request}", redirDebug)
             woverride = False
             valid = True
+            LATCH = 2
         #response = html % stateis
         response = stateis
         if root == 6:
@@ -592,74 +596,74 @@ async def main():
             #await asyncio.sleep(0.25)
             #led.off()
             
-            if ON and TIMERON:
-                if countdownON > 1:
-                    relay1.high()
-                    led.low()
-                    countdownON -= 1
-                    POWER = True
-                    print("countdownON =", countdownON)
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-                elif countdownON == 1:
-                    print("From ON to OFF in:", countdownON)
-                    #relay1.low()
-                    #led.high()
-                    POWER = False
-                    countdownON = 0
-                    countdownOFF = offtime
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-                elif countdownOFF > 1:
-                    relay1.low()
-                    led.high()
-                    countdownOFF -= 1
-                    POWER = False
-                    print("countdownOFF =", countdownOFF)
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-                elif countdownOFF == 1:
-                    print("From OFF to ON in:", countdownOFF)
-                    countdownOFF = 0
-                    countdownON = ontime
-                    POWER = True
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-                elif not TIMERON:
-                    print("ON :: Timer is OFF :: relay is on!")
-                    relay1.high()
-                    led.low()
-                    POWER = True
-                    countdownON = ontime
-                    countdownOFF = offtime
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-                else:
-                    relay1.high()
-                    led.low()
-                    #utime.sleep(1)
-                    await asyncio.sleep(1)
-            elif ON and not TIMERON:
-                relay1.high()
-                led.low()
-                print("ON :: Timer OFF")
-                countdownON = ontime
-                countdownOFF = offtime
-                #utime.sleep(1)
-                await asyncio.sleep(1)
-            else:
-                relay1.low()
-                led.high()
-                POWER = False
-                print("OFF :: Relay OFF!")
-                countdownON = ontime
-                countdownOFF = offtime
-                #utime.sleep(1)
-                await asyncio.sleep(1)
-        
-#            else:
-#                print("WOVERRIDE =", str(woverride))
-            await asyncio.sleep(0)
+#             if ON and TIMERON:
+#                 if countdownON > 1:
+#                     relay.high()
+#                     led.low()
+#                     countdownON -= 1
+#                     POWER = True
+#                     print("countdownON =", countdownON)
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#                 elif countdownON == 1:
+#                     print("From ON to OFF in:", countdownON)
+#                     #relay.low()
+#                     #led.high()
+#                     POWER = False
+#                     countdownON = 0
+#                     countdownOFF = offtime
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#                 elif countdownOFF > 1:
+#                     relay.low()
+#                     led.high()
+#                     countdownOFF -= 1
+#                     POWER = False
+#                     print("countdownOFF =", countdownOFF)
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#                 elif countdownOFF == 1:
+#                     print("From OFF to ON in:", countdownOFF)
+#                     countdownOFF = 0
+#                     countdownON = ontime
+#                     POWER = True
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#                 elif not TIMERON:
+#                     print("ON :: Timer is OFF :: relay is on!")
+#                     relay.high()
+#                     led.low()
+#                     POWER = True
+#                     countdownON = ontime
+#                     countdownOFF = offtime
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#                 else:
+#                     relay.high()
+#                     led.low()
+#                     #utime.sleep(1)
+#                     await asyncio.sleep(1)
+#             elif ON and not TIMERON:
+#                 relay.high()
+#                 led.low()
+#                 print("ON :: Timer OFF")
+#                 countdownON = ontime
+#                 countdownOFF = offtime
+#                 #utime.sleep(1)
+#                 await asyncio.sleep(1)
+#             else:
+#                 relay.low()
+#                 led.high()
+#                 POWER = False
+#                 print("OFF :: Relay OFF!")
+#                 countdownON = ontime
+#                 countdownOFF = offtime
+#                 #utime.sleep(1)
+#                 await asyncio.sleep(1)
+#         
+# #            else:
+# #                print("WOVERRIDE =", str(woverride))
+            await asyncio.sleep(1)
         
 try:
     asyncio.run(main())
