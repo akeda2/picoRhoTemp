@@ -53,6 +53,8 @@ ontime = 60
 ON = None
 TIMERON = None
 
+wT = 0
+wRH = 0
 
 # WiFi starts here:
 myWifi = wifiwrap()
@@ -145,6 +147,7 @@ async def serve_client(reader,writer):
         global woverride
         global clients
         global LATCH
+        global wT, wRH
         print("Client connected")
         print("Clients before:", str(clients))
         request_line = await reader.readline()
@@ -229,9 +232,9 @@ async def serve_client(reader,writer):
         <a href='http://{myIP}{urls['relayON']}'>Relay ON</a><br>
         <a href='http://{myIP}{urls['relayOFF']}'>Relay OFF</a><br>
         <a href='http://{myIP}{urls['relayStatus']}'>Relay status</a><br>
-        <a href='http://{myIP}{urls['overrideOFF']}'>Relay auto</a><br>
-        <pre>\n\nServer IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\n</pre>"""#   = " + str(RH) + "<br>Temp = " + str(T) + "</h1>"
-        redirDebug = f"Server IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\n"
+        <a href='http://{myIP}{urls['overrideOFF']}'>Relay autom</a><br>
+        <pre>\n\nServer IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n</pre>"""#   = " + str(RH) + "<br>Temp = " + str(T) + "</h1>"
+        redirDebug = f"Server IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n"
         stateis = html % stateis
         valid = False
         
@@ -360,7 +363,7 @@ utime.sleep(6)
 #while True:
 async def sensors():
     while True:
-        global llen, countdown, recountdown, cd
+        global llen, countdown, recountdown, cd, wT, wRH
         led.low()
         #LATCH
         try:
@@ -393,6 +396,8 @@ async def sensors():
         sT = sum(mT)/len(mT)
         sRH = sum(mRH)/len(mRH)
         
+        wT = sT
+        wRH = sRH
         #print(str(len(mRH)))
         #print(mT)
         #print(mRH)
