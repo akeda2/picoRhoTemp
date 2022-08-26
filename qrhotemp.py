@@ -1,5 +1,5 @@
 # Rhotemp for the pico W
-from machine import Pin
+from machine import Pin, PWM
 from DHT22 import DHT22
 #import time
 import sys
@@ -18,19 +18,32 @@ from styrover import Relay, Onoff
 
 gc.enable()
 
+# Beeeep
+class Bell:
+    def __init__(self, mypin: int):
+        self.bell = PWM(Pin(mypin))
+    async def ding(self, time: int):
+        self.bell.freq(1000)
+        self.bell.duty_u16(16000)
+        await asyncio.sleep(time)
+        self.bell.deinit()
+myBell = Bell(16)
+#async def runBell(tm):
+#    myBell.ding(int(tm))
+
 # DHT22 library is available at
 # https://github.com/danjperron/PicoDHT22
 
 # init DHT22 on Pin 4. Do not forget to connect 3.3V and GND with a 10k pull-up resistor between 3.3V and data (4).
-dht22 = DHT22(Pin(4,Pin.IN,Pin.PULL_UP))
+dht22 = DHT22(Pin(3,Pin.IN,Pin.PULL_UP))
 # The LED is the pico built-in.
 #led = Pin(25, Pin.OUT)
 led = Pin('LED', Pin.OUT)
 # Relay on 15. For a 5V relay, connect 5V and GND to relay.
-relay = Pin(15, Pin.OUT)
+relay = Pin(1, Pin.OUT)
 #relay = Pin(16, Pin.OUT)
 # For a "flottör" (float switch), connect it to 16 and 3.3V (NOT 5V!).
-flott = Pin(16, Pin.IN,Pin.PULL_DOWN)
+flott = Pin(2, Pin.IN,Pin.PULL_DOWN)
 led.low()
 relay.low()
 degree = chr(176)
@@ -57,18 +70,29 @@ wT = 0
 wRH = 0
 
 # WiFi starts here:
+led.high()
 myWifi = wifiwrap()
 myWifi.connect_to_network(wifisettings['ssid'], wifisettings['passwd'])
+led.low()
 
 print(myWifi.ifconfig())
 print(myWifi.getstatus())
 myIP = myWifi.getip()
+#if myWifi.getstatus() != 3:
+
+#asyncio.run(myBell.ding(1))
+
+#asyncio.run(runBell(1))
+
+
 
 # Website values starts here:
 urls = {
     'relayON': '/relay/on',
     'relayOFF': '/relay/off',
     'relayStatus': '/relay/status',
+    'rh': '/rh',
+    'temp': '/temp',
     'ozonToggle': '/ozon/toggle',
     'timerON': '/ozon/timeron',
     'timerOFF': '/ozon/timeroff',
@@ -114,13 +138,13 @@ def readser():
             rawdata = int(arawdata)
         except:
             pass
-        if board == "tiny":
-            #blue.duty_u16(0)
-            #green.duty_u16(65535)
-            print("lkj")
-        else:
-            led.high()
-            #led.duty_u16(65535)
+#         if board == "tiny":
+#             #blue.duty_u16(0)
+#             #green.duty_u16(65535)
+#             print("lkj")
+#         else:
+#             led.high()
+#             #led.duty_u16(65535)
         try:
             if rawdata > 299000:
                 print("Latch on auto!")
@@ -135,13 +159,14 @@ def readser():
                 relay.low()
         except:
             pass
-        gc.collect()
+        #gc.collect()
             
 readserialThread = _thread.start_new_thread(readser, ())
 
 
 # Async webserver starts here:
 async def serve_client(reader,writer):
+        led.high()
         global ON
         global TIMERON
         global woverride
@@ -149,7 +174,7 @@ async def serve_client(reader,writer):
         global LATCH
         global wT, wRH
         print("Client connected")
-        print("Clients before:", str(clients))
+        #print("Clients before:", str(clients))
         request_line = await reader.readline()
         #request_line = b''
         print("Request:", str(request_line))
@@ -181,38 +206,29 @@ async def serve_client(reader,writer):
         print(request)
         favicon = request.find('/favicon.ico')
         root = request.find('/ ', 6, 9)
-
-#         led_on = request.find('/led/on')
-#         led_off = request.find('/led/off')
-#         led_toggle = request.find('/led/toggle')
-#         
+         
         relayON = request.find(urls['relayON'])
         relayOFF = request.find(urls['relayOFF'])
         relayStatus = request.find(urls['relayStatus'])
-#         ozonToggle = request.find(urls['ozonToggle'])
-#         timerON = request.find(urls['timerON'])
-#         timerOFF = request.find(urls['timerOFF'])
-#         timerToggle = request.find(urls['timerToggle'])
         overrideOFF = request.find(urls['overrideOFF'])
-        #json = request.find('/json')
-        #print('led on = ' + str(led_on))
-        #print('led off = ' + str(led_off))
-        #print('led toggle = ' + str(led_toggle))
-#         print('ozon on = ' + str(ozonON))
-#         print('ozon off = ' + str(ozonOFF))
-#         print('ozon toggle = ' + str(ozonToggle))
-#         print('ozon timer on = ' + str(timerON))
-#         print('ozon timer off = ' + str(timerOFF))
-#         print('ozon timer off = ' + str(timerToggle))
+        getRH = request.find(urls['rh'])
+        getTemp = request.find(urls['temp'])
+
         print('override off = ' + str(overrideOFF))
         print('Relay status = ' + str(relayStatus))
         print('favicon = ' + str(favicon))
         print('root = ' + str(root))
+        print('getRH = ' + str(getRH))
+        print('getTemp = ' + str(getTemp))
         #print('rh = ' + str(rh))
         #print('json = ' + str(json))
         
         #Default webpage if just "/"
         myIP = myWifi.getip()
+        if flott.value() == True:
+            FLOTTVAL = "Container is full!"
+        else:
+            FLOTTVAL = "Container is not full"
         if relay.value() == 1:
             isiton = "ON"
         else:
@@ -222,9 +238,9 @@ async def serve_client(reader,writer):
         else:
             isTimerOn = "Timer OFF"
         if woverride == True:
-            isOverride = "Override ON"
+            isOverride = "Override ON / Auto OFF"
         else:
-            isOverride = "Override OFF"
+            isOverride = "Override OFF / Auto ON"
         
         stateis = f"""<h1>Relay {isiton}</h1><br>
         <h2>{isTimerOn}</h2><br>
@@ -232,66 +248,14 @@ async def serve_client(reader,writer):
         <a href='http://{myIP}{urls['relayON']}'>Relay ON</a><br>
         <a href='http://{myIP}{urls['relayOFF']}'>Relay OFF</a><br>
         <a href='http://{myIP}{urls['relayStatus']}'>Relay status</a><br>
-        <a href='http://{myIP}{urls['overrideOFF']}'>Relay autom</a><br>
-        <pre>\n\nServer IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n</pre>"""#   = " + str(RH) + "<br>Temp = " + str(T) + "</h1>"
-        redirDebug = f"Server IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n"
+        <a href='http://{myIP}{urls['overrideOFF']}'>Override OFF / Auto ON</a><br>
+        <a href='http://{myIP}{urls['rh']}'>RH</a><br>
+        <a href='http://{myIP}{urls['temp']}'>TEMP</a><br>
+        <pre>\n\nServer IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n{FLOTTVAL}\n</pre>"""#   = " + str(RH) + "<br>Temp = " + str(T) + "</h1>"
+        redirDebug = f"Server IP: {myIP}\nClient IP: {clientIP[0]}\n{request}\n{clients} requests.\nwRH: {wRH}\nwT : {wT}\n{FLOTTVAL}\n"
         stateis = html % stateis
         valid = False
         
-#         <a href='http://{myIP}{urls['timerON']}'>OZON TIMER ON</a><br>
-#         <a href='http://{myIP}{urls['timerOFF']}'>OZON TIMER OFF</a><br>
-#         <!--<a href='http://{myIP}{urls['timerToggle']}'>OZON TIMER TOGGLE</a><br>-->
-#<!--<a href='http://{myIP}{urls['ozonToggle']}'>OZON TOGGLE</a><br>-->        
-        #stateis = "glenn"
-#         if led_on == 6:
-#             print("led on")
-#             led.on()
-#             stateis = "LED is on"
-#         if led_off == 6:
-#             print("led off")
-#             led.off()
-#             stateis = "LED is off"
-#         if led_toggle == 6:
-#             print("led toggle")
-#             led.toggle()
-#             stateis = "LED is toggled"
-#         if ozonON == 6:
-#             print("Ozon turning on")
-#             stateis = redir % (f"Ozon has turned on\n{request}", redirDebug)
-#             #relay.high()
-#             ON = 1
-#             woverride = True
-#             valid = True
-#         if ozonOFF == 6:
-#             print("Ozon turning off")
-#             stateis = redir % (f"Ozon has turned off\n{request}", redirDebug)
-#             #relay.low()
-#             ON = 0
-#             woverride = True
-#             valid = True
-#         if ozonToggle == 6:
-#             print("Ozon toggling...")
-#             stateis = redir % (f"Ozon has toggled\n{request}", redirDebug)
-#             relay.toggle()
-#             woverride = True
-#             valid = True
-#         if timerON == 6:
-#             print("Timer ON")
-#             stateis = redir % (f"Timer is ON\n{request}", redirDebug)
-#             TIMERON = 1
-#             woverride = True
-#             valid = True
-#         if timerOFF == 6:
-#             print("Timer OFF")
-#             stateis = redir % (f"Timer is OFF\n{request}", redirDebug)
-#             TIMERON = 0
-#             woverride = True
-#             valid = True
-#         if timerToggle == 6:
-#             print("Timer toggle")
-#             stateis = redir % (f"Timer toggle\n{request}", redirDebug)
-#             woverride = True
-#             valid = True
         if relayON == 6:
             print("Relay turning on")
             stateis = redir % (f"Relay has turned on\n{request}", redirDebug)
@@ -311,6 +275,14 @@ async def serve_client(reader,writer):
         if relayStatus == 6:
             print("Relay status")
             stateis = (f"{str(relay.value())}")
+            valid = True
+        if getRH == 6:
+            print("RH value")
+            stateis = (f"{str(wRH)}")
+            valid = True
+        if getTemp == 6:
+            print("Temp value")
+            stateis = (f"{str(wT)}")
             valid = True
         if overrideOFF == 6:
             print("Override OFF")
@@ -335,8 +307,8 @@ async def serve_client(reader,writer):
         await writer.wait_closed()
         print('Client disconnected')
         clients += 1
-        memprint()
-        #led.toggle()
+        #memprint()
+        led.low()
 
 
 
@@ -364,7 +336,7 @@ utime.sleep(6)
 async def sensors():
     while True:
         global llen, countdown, recountdown, cd, wT, wRH
-        led.low()
+        led.toggle()
         #LATCH
         try:
             T, RH = dht22.read()
@@ -463,6 +435,7 @@ async def sensors():
         if flott.value() == True:
             relay.low()
             print("Container full!")
+            #asyncio.run(myBell.ding(2))
             ran = range(6)
             for r in ran:
                 led.high()
@@ -552,9 +525,9 @@ async def sensors():
         led.low()
         #time.sleep_ms(int(sleeptime/3))
         await asyncio.sleep_ms(int(sleeptime/3))
-        led.high()
+        #led.high()
         sT = sRH = T = RH = None
-        gc.collect()
+        #gc.collect()
         
 clients = 1
 woverride = False
@@ -573,108 +546,42 @@ async def main():
     countdownON = ontime
     countdownOFF = offtime
     POWER = True
-    ka = 290
+    ka = 0
 
     while True:
-            print(str(clients))
+            #print(str(clients))
             #led.on()
-            if ka >= 300:
-                ka = 0
-                if checkwebpage():
-                    print("No prob")
-                else:
-                    print("Reconnect testing..")
-                    myWifi.disconnect()
-                    await asyncio.sleep(1)
-                    myWifi.connect_to_network(wifisettings['ssid'], wifisettings['passwd'])
-                    await asyncio.sleep(1)
-                    memprint()
-            else:
-                ka += 1
-            #while not wlan.isconnected() and wlan.status() >= 0:
-            if not myWifi.getstatus() == 3:
+#             if ka >= 3000:
+#                 ka = 0
+#                 if checkwebpage():
+#                     print("No prob")
+#                 else:
+#                     led.toggle()
+#                     print("Reconnect testing..")
+#                     myWifi.disconnect()
+#                     await asyncio.sleep(1)
+#                     myWifi.connect_to_network(wifisettings['ssid'], wifisettings['passwd'])
+#                     await asyncio.sleep(1)
+#                     memprint()
+#                     led.toggle()
+#             else:
+#                 ka += 1
+#             #while not wlan.isconnected() and wlan.status() >= 0:
+            while not myWifi.getstatus() == 3:
                 print(myWifi.getstatus())
                 print(myWifi.ifconfig())
                 myWifi.connect_to_network(wifisettings['ssid'], wifisettings['passwd'])
+                #asyncio.run(myBell(1))
                 await asyncio.sleep(2)
-            print('.')
-            #await asyncio.sleep(0.25)
-            #led.off()
-            
-#             if ON and TIMERON:
-#                 if countdownON > 1:
-#                     relay.high()
-#                     led.low()
-#                     countdownON -= 1
-#                     POWER = True
-#                     print("countdownON =", countdownON)
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#                 elif countdownON == 1:
-#                     print("From ON to OFF in:", countdownON)
-#                     #relay.low()
-#                     #led.high()
-#                     POWER = False
-#                     countdownON = 0
-#                     countdownOFF = offtime
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#                 elif countdownOFF > 1:
-#                     relay.low()
-#                     led.high()
-#                     countdownOFF -= 1
-#                     POWER = False
-#                     print("countdownOFF =", countdownOFF)
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#                 elif countdownOFF == 1:
-#                     print("From OFF to ON in:", countdownOFF)
-#                     countdownOFF = 0
-#                     countdownON = ontime
-#                     POWER = True
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#                 elif not TIMERON:
-#                     print("ON :: Timer is OFF :: relay is on!")
-#                     relay.high()
-#                     led.low()
-#                     POWER = True
-#                     countdownON = ontime
-#                     countdownOFF = offtime
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#                 else:
-#                     relay.high()
-#                     led.low()
-#                     #utime.sleep(1)
-#                     await asyncio.sleep(1)
-#             elif ON and not TIMERON:
-#                 relay.high()
-#                 led.low()
-#                 print("ON :: Timer OFF")
-#                 countdownON = ontime
-#                 countdownOFF = offtime
-#                 #utime.sleep(1)
-#                 await asyncio.sleep(1)
-#             else:
-#                 relay.low()
-#                 led.high()
-#                 POWER = False
-#                 print("OFF :: Relay OFF!")
-#                 countdownON = ontime
-#                 countdownOFF = offtime
-#                 #utime.sleep(1)
-#                 await asyncio.sleep(1)
-#         
-# #            else:
-# #                print("WOVERRIDE =", str(woverride))
+            #print('.')
+            #memprint()
             await asyncio.sleep(1)
         
 try:
     asyncio.run(main())
 except:
-    print("EPIC FAIL")
+    #print("EPIC FAIL")
     raise
 finally:
-    print("in finally")
+    #print("in finally")
     asyncio.new_event_loop()
